@@ -6,6 +6,9 @@ import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 
+// Define navigation items as a constant to ensure consistency
+const navigationItems = ['Dashboard', 'Player', 'Pricing', 'About'];
+
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
 
@@ -77,7 +80,7 @@ export default function Navbar() {
           </motion.div>
           
           <motion.nav variants={itemVariants} className="hidden md:flex items-center space-x-6">
-            {['Dashboard', 'Pricing', 'About'].map((item) => (
+            {navigationItems.map((item) => (
               <Link 
                 key={item} 
                 href={`/${item.toLowerCase()}`} 

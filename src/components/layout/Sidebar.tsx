@@ -4,8 +4,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Icon } from '@iconify/react';
 
+// Define navigation items outside the component for consistency
 const navItems = [
   { name: 'Home', path: '/dashboard', icon: 'lucide:home' },
+  { name: 'Player', path: '/player', icon: 'lucide:music' },
   { name: 'Library', path: '/dashboard/library', icon: 'lucide:library' },
   { name: 'History', path: '/dashboard/history', icon: 'lucide:history' },
   { name: 'Settings', path: '/dashboard/settings', icon: 'lucide:settings' },

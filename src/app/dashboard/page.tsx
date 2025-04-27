@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
 import SessionTypeSelector from '@/components/music/SessionTypeSelector';
@@ -118,12 +119,25 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="flex items-center mb-10"
+            className="flex items-center justify-between mb-10"
           >
-            <Icon icon="fluent-emoji-high-contrast:musical-notes" className="w-10 h-10 text-purple-500 mr-3" />
-            <h1 className="text-3xl font-bold text-white">
-              Your Brain <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">Sessions</span>
-            </h1>
+            <div className="flex items-center">
+              <Icon icon="fluent-emoji-high-contrast:musical-notes" className="w-10 h-10 text-purple-500 mr-3" />
+              <h1 className="text-3xl font-bold text-white">
+                Your Brain <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">Sessions</span>
+              </h1>
+            </div>
+            
+            <Link href="/player">
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-lg text-white"
+              >
+                <Icon icon="lucide:music" width={18} />
+                <span>Advanced Player</span>
+              </motion.button>
+            </Link>
           </motion.div>
           
           <AnimatePresence mode="wait">
