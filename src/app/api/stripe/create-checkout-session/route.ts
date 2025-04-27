@@ -29,6 +29,17 @@ export async function POST(request: Request) {
       );
     }
 
+    // Validar el formato del ID de precio
+    if (!priceId.startsWith('price_')) {
+      return NextResponse.json(
+        { 
+          error: 'Formato de ID de precio inválido. Debe comenzar con "price_".',
+          details: 'Has proporcionado un ID de producto (prod_) en lugar de un ID de precio (price_).'
+        },
+        { status: 400 }
+      );
+    }
+
     if (!successUrl || !cancelUrl) {
       return NextResponse.json(
         { error: 'Se requieren URLs de éxito y cancelación.' },
@@ -47,17 +58,56 @@ export async function POST(request: Request) {
 
     console.log('Iniciando creación de sesión de checkout con Stripe');
 
-    // Crear sesión de checkout
-    const { url, sessionId } = await createCheckoutSession({
-      priceId,
-      successUrl,
-      cancelUrl,
-      userId,
-    });
+    // Implementar modo de simulación para desarrollo cuando Stripe está suspendido
+    // Solo para uso en desarrollo - quitar en producción
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const useSimulationMode = isDevelopment && (process.env.USE_STRIPE_SIMULATION === 'true');
+    
+    if (useSimulationMode) {
+      console.log('Usando modo de simulación para Stripe (solo desarrollo)');
+      
+      // Simular una respuesta exitosa para propósitos de desarrollo
+      return NextResponse.json({
+        url: `${successUrl}?simulation=true&sessionId=sim_123456789`,
+        sessionId: 'sim_123456789',
+        simulation: true
+      });
+    }
 
-    console.log(`Sesión de checkout creada exitosamente: ${sessionId}`);
+    try {
+      // Crear sesión de checkout
+      const { url, sessionId } = await createCheckoutSession({
+        priceId,
+        successUrl,
+        cancelUrl,
+        userId,
+      });
 
-    return NextResponse.json({ url, sessionId });
+      console.log(`Sesión de checkout creada exitosamente: ${sessionId}`);
+
+      return NextResponse.json({ url, sessionId });
+    } catch (stripeError: unknown) {
+      // Capturar específicamente errores relacionados con cuenta suspendida
+      const errorMessage = stripeError instanceof Error ? stripeError.message : 'Error desconocido de Stripe';
+      
+      if (errorMessage.includes('account has been suspended') || 
+          errorMessage.includes('account cannot create charges') ||
+          errorMessage.includes('payments disabled')) {
+        console.error('Error de Stripe - Cuenta suspendida:', errorMessage);
+        return NextResponse.json(
+          { 
+            error: 'Los pagos están suspendidos en esta cuenta de Stripe. Por favor contacta con soporte.',
+            details: errorMessage,
+            accountSuspended: true
+          },
+          { status: 503 }
+        );
+      }
+      
+      // Otros errores de Stripe
+      console.error('Error de Stripe:', errorMessage);
+      throw stripeError;
+    }
   } catch (error: unknown) {
     console.error('Error detallado al crear sesión de checkout:', error);
     

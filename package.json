@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@clerk/nextjs": "^4.29.7",
+    "@clerk/nextjs": "^4.31.8",
     "@iconify/react": "^4.1.1",
     "clsx": "^2.0.0",
     "framer-motion": "^12.9.2",

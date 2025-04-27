@@ -2,7 +2,7 @@ import Stripe from 'stripe';
 
 // Inicializar Stripe con la clave secreta del servidor
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-03-31.basil', // Usar la versión compatible con el tipo
+  apiVersion: '2025-03-31.basil', // La versión debe coincidir con la esperada por los tipos de Stripe
   typescript: true,
 });
 
@@ -29,42 +29,85 @@ async function createCheckoutSession({
   customerEmail,
   metadata = {},
 }: CreateCheckoutSessionParams) {
-  // Configurar parámetros de la sesión
-  const params: Stripe.Checkout.SessionCreateParams = {
-    mode: 'subscription',
-    payment_method_types: ['card'],
-    line_items: [
-      {
-        price: priceId,
-        quantity: 1,
-      },
-    ],
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-    metadata: {
-      userId,
-      ...metadata,
-    },
-    subscription_data: {
+  try {
+    // Verificar que tenemos la clave API de Stripe
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('La clave API de Stripe no está configurada');
+    }
+
+    // Verificar que el ID de precio tiene el formato correcto
+    if (!priceId.startsWith('price_')) {
+      throw new Error('Formato de ID de precio inválido. Debe comenzar con "price_"');
+    }
+
+    // Configurar parámetros de la sesión
+    const params: Stripe.Checkout.SessionCreateParams = {
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       metadata: {
         userId,
+        ...metadata,
       },
-    },
-  };
+      subscription_data: {
+        metadata: {
+          userId,
+        },
+      },
+    };
 
-  // Si hay un customerId, utilizarlo, de lo contrario usar email para cliente nuevo
-  if (customerId) {
-    params.customer = customerId;
-  } else if (customerEmail) {
-    params.customer_email = customerEmail;
+    // Si hay un customerId, utilizarlo, de lo contrario usar email para cliente nuevo
+    if (customerId) {
+      params.customer = customerId;
+    } else if (customerEmail) {
+      params.customer_email = customerEmail;
+    }
+
+    console.log('Creando sesión de checkout con parámetros:', JSON.stringify(params, null, 2));
+    
+    try {
+      const session = await stripe.checkout.sessions.create(params);
+      console.log('Sesión de checkout creada:', session.id);
+      
+      return {
+        url: session.url,
+        sessionId: session.id,
+      };
+    } catch (error: unknown) {
+      // Verificar si el error es por cuenta suspendida
+      if (error instanceof Error && error.message) {
+        // Verificar si el error es por cuenta suspendida
+        if (
+          error.message.includes('account has been suspended') ||
+          error.message.includes('account cannot create charges') ||
+          error.message.includes('payments disabled')
+        ) {
+          console.error('Error: Cuenta de Stripe suspendida:', error.message);
+          throw new Error(`Cuenta de Stripe suspendida: ${error.message}`);
+        }
+        
+        // Verificar si es un error de "price not found"
+        if (error.message.includes('No such price')) {
+          console.error(`Error: El ID de precio '${priceId}' no existe en Stripe:`, error.message);
+          throw new Error(`El ID de precio '${priceId}' no existe en Stripe. Verifica que estés usando un ID de precio válido.`);
+        }
+      }
+      
+      // Otros errores
+      console.error('Error al crear sesión de checkout en Stripe:', error);
+      throw error;
+    }
+  } catch (error: unknown) {
+    console.error('Error en createCheckoutSession:', error);
+    throw error;
   }
-
-  const session = await stripe.checkout.sessions.create(params);
-  
-  return {
-    url: session.url,
-    sessionId: session.id,
-  };
 }
 
 // Interfaz para crear una sesión del portal de clientes
