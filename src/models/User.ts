@@ -1,49 +1,12 @@
-import mongoose from 'mongoose';
+import { ObjectId } from 'mongodb';
+import { getDatabase } from '@/lib/mongodb/connection';
 
-// Verificar si el modelo ya existe para evitar recompilación en desarrollo
-const UserModel = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
-  clerkId: { 
-    type: String, 
-    required: true, 
-    unique: true 
-  },
-  email: { 
-    type: String, 
-    required: true 
-  },
-  name: { 
-    type: String 
-  },
-  stripeCustomerId: { 
-    type: String 
-  },
-  preferences: {
-    favoriteCategory: { 
-      type: String, 
-      enum: ['focus', 'relax', 'sleep'] 
-    },
-    preferredDuration: { 
-      type: Number
-    }, // in minutes
-    volume: { 
-      type: Number, 
-      default: 80 
-    },
-  },
-  createdAt: { 
-    type: Date, 
-    default: Date.now 
-  },
-  updatedAt: { 
-    type: Date, 
-    default: Date.now 
-  },
-}));
+// Collection name
+const COLLECTION = 'users';
 
-export default UserModel;
-
-// Tipo para TypeScript
-export interface UserDocument extends mongoose.Document {
+// Interface for User document
+export interface User {
+  _id?: ObjectId;
   clerkId: string;
   email: string;
   name?: string;
@@ -55,4 +18,75 @@ export interface UserDocument extends mongoose.Document {
   };
   createdAt: Date;
   updatedAt: Date;
+}
+
+/**
+ * Gets a user by their Clerk ID
+ */
+export async function getUserByClerkId(clerkId: string): Promise<User | null> {
+  const db = await getDatabase();
+  return db.collection<User>(COLLECTION).findOne({ clerkId });
+}
+
+/**
+ * Gets a user by their Stripe customer ID
+ */
+export async function getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | null> {
+  const db = await getDatabase();
+  return db.collection<User>(COLLECTION).findOne({ stripeCustomerId });
+}
+
+/**
+ * Creates a new user
+ */
+export async function createUser(user: Omit<User, '_id' | 'createdAt' | 'updatedAt'>): Promise<User> {
+  const db = await getDatabase();
+  
+  const now = new Date();
+  const newUser = {
+    ...user,
+    createdAt: now,
+    updatedAt: now
+  };
+  
+  const result = await db.collection<User>(COLLECTION).insertOne(newUser);
+  
+  return {
+    ...newUser,
+    _id: result.insertedId
+  };
+}
+
+/**
+ * Updates a user
+ */
+export async function updateUser(
+  clerkId: string, 
+  update: Partial<Omit<User, '_id' | 'clerkId' | 'createdAt'>>
+): Promise<User | null> {
+  const db = await getDatabase();
+  
+  const result = await db.collection<User>(COLLECTION).findOneAndUpdate(
+    { clerkId },
+    { 
+      $set: { 
+        ...update, 
+        updatedAt: new Date() 
+      } 
+    },
+    { returnDocument: 'after' }
+  );
+  
+  return result;
+}
+
+/**
+ * Deletes a user
+ */
+export async function deleteUser(clerkId: string): Promise<boolean> {
+  const db = await getDatabase();
+  
+  const result = await db.collection(COLLECTION).deleteOne({ clerkId });
+  
+  return result.deletedCount === 1;
 } 
