@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { stripe } from '@/lib/stripe/stripe';
 import { connectToDatabase } from '@/lib/mongodb/connection';
-import SubscriptionModel from '@/models/Subscription';
-import UserModel from '@/models/User';
+import { getSubscriptionByUserId, updateSubscription, upsertSubscription } from '@/models/Subscription';
+import { getUserByStripeCustomerId, updateUser } from '@/models/User';
 
 // Maneja todas las solicitudes POST a /api/webhooks/stripe
 export async function POST(req: Request) {
@@ -79,7 +79,7 @@ async function handleSubscriptionChange(subscription: any) {
   }
 
   // Buscar usuario por customerId
-  const user = await UserModel.findOne({ stripeCustomerId: customerId });
+  const user = await getUserByStripeCustomerId(customerId);
   
   if (!user) {
     console.error(`No se encontró usuario con customerId: ${customerId}`);
@@ -87,20 +87,18 @@ async function handleSubscriptionChange(subscription: any) {
   }
 
   // Actualizar o crear suscripción
-  await SubscriptionModel.findOneAndUpdate(
-    { userId: user.clerkId },
+  await upsertSubscription(
+    user.clerkId,
     {
       stripeCustomerId: customerId,
       stripeSubscriptionId: subscriptionId,
       stripePriceId: priceId,
-      status,
-      plan,
+      status: status as any,
+      plan: plan as any,
       currentPeriodStart,
       currentPeriodEnd,
-      cancelAtPeriodEnd,
-      updatedAt: new Date()
-    },
-    { upsert: true }
+      cancelAtPeriodEnd
+    }
   );
 
   console.log(`Suscripción ${status} para usuario: ${user.clerkId}`);
@@ -113,7 +111,7 @@ async function handleSubscriptionCancelled(subscription: any) {
   const customerId = subscription.customer;
   
   // Buscar usuario por customerId
-  const user = await UserModel.findOne({ stripeCustomerId: customerId });
+  const user = await getUserByStripeCustomerId(customerId);
   
   if (!user) {
     console.error(`No se encontró usuario con customerId: ${customerId}`);
@@ -121,13 +119,12 @@ async function handleSubscriptionCancelled(subscription: any) {
   }
 
   // Actualizar suscripción a cancelada y plan a free
-  await SubscriptionModel.findOneAndUpdate(
-    { userId: user.clerkId },
+  await updateSubscription(
+    user.clerkId,
     {
       status: 'canceled',
       plan: 'free',
-      cancelAtPeriodEnd: true,
-      updatedAt: new Date()
+      cancelAtPeriodEnd: true
     }
   );
 
@@ -151,11 +148,10 @@ async function handleCheckoutCompleted(session: any) {
   }
 
   // Actualizar usuario con customerId si no lo tiene
-  await UserModel.findOneAndUpdate(
-    { clerkId: userId },
+  await updateUser(
+    userId,
     { 
-      stripeCustomerId: customerId,
-      updatedAt: new Date()
+      stripeCustomerId: customerId
     }
   );
 
@@ -176,11 +172,10 @@ async function handleCustomerUpdate(customer: any) {
   }
 
   // Actualizar usuario con customerId
-  await UserModel.findOneAndUpdate(
-    { clerkId },
+  await updateUser(
+    clerkId,
     { 
-      stripeCustomerId: customerId,
-      updatedAt: new Date()
+      stripeCustomerId: customerId
     }
   );
 

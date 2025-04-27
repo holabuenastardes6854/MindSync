@@ -1,11 +1,12 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, Variants, HTMLMotionProps } from 'framer-motion';
 import { Icon } from '@iconify/react';
 import { cn } from '@/lib/utils';
 
-interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+// Create a custom type for the properties we want to handle
+interface IconButtonProps {
   icon: string;
   variant?: 'primary' | 'secondary' | 'ghost' | 'outline' | 'glow';
   size?: 'xs' | 'sm' | 'md' | 'lg';
@@ -20,7 +21,13 @@ interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> 
   isLoading?: boolean;
   tooltipText?: string;
   withRing?: boolean;
+  className?: string;
+  disabled?: boolean;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
 }
+
+// Export the full icon button props for use when extending
+export type FullIconButtonProps = IconButtonProps & Omit<HTMLMotionProps<"button">, keyof IconButtonProps>;
 
 export function IconButton({
   icon,
@@ -39,8 +46,9 @@ export function IconButton({
   withRing = false,
   className,
   disabled,
+  onClick,
   ...props
-}: IconButtonProps) {
+}: FullIconButtonProps) {
   // Size mappings
   const sizeClasses = {
     xs: 'p-1 w-6 h-6',
@@ -78,7 +86,7 @@ export function IconButton({
   const ringClass = withRing ? 'focus:ring-2 focus:ring-purple-500/40 focus:ring-offset-2 focus:ring-offset-gray-900' : '';
   
   // Animation variants for hover and tap
-  const getAnimationVariants = () => {
+  const getAnimationVariants = (): Variants => {
     switch (animation) {
       case 'scale':
         return {
@@ -115,7 +123,11 @@ export function IconButton({
         };
       case 'none':
       default:
-        return {};
+        // Return empty variants but with defined properties to satisfy the type
+        return {
+          hover: { scale: 1 },
+          tap: { scale: 1 },
+        };
     }
   };
 
@@ -127,6 +139,9 @@ export function IconButton({
   const textColor = isActive && activeColor ? activeColor : color;
   
   const isDisabled = disabled || isLoading;
+  
+  // Get variants once to avoid regenerating on each render
+  const animationVariants = getAnimationVariants();
   
   return (
     <motion.button
@@ -145,8 +160,9 @@ export function IconButton({
       initial={{ scale: 1 }}
       whileHover={!isDisabled ? 'hover' : undefined}
       whileTap={!isDisabled ? 'tap' : undefined}
-      variants={getAnimationVariants()}
+      variants={animationVariants}
       transition={{ duration: 0.2 }}
+      onClick={onClick}
       {...props}
     >
       {isLoading ? (
@@ -190,7 +206,7 @@ export function IconButton({
 }
 
 // Preset variants
-export function PlayButton(props: Omit<IconButtonProps, 'icon' | 'activeIcon' | 'variant' | 'rounded'>) {
+export function PlayButton(props: Omit<FullIconButtonProps, 'icon' | 'activeIcon' | 'variant' | 'rounded'>) {
   return (
     <IconButton
       icon="lucide:play"
@@ -202,7 +218,7 @@ export function PlayButton(props: Omit<IconButtonProps, 'icon' | 'activeIcon' | 
   );
 }
 
-export function SkipButton(props: Omit<IconButtonProps, 'icon' | 'variant' | 'rounded'>) {
+export function SkipButton(props: Omit<FullIconButtonProps, 'icon' | 'variant' | 'rounded'>) {
   return (
     <IconButton
       icon="lucide:skip-forward"
@@ -213,7 +229,7 @@ export function SkipButton(props: Omit<IconButtonProps, 'icon' | 'variant' | 'ro
   );
 }
 
-export function VolumeButton(props: Omit<IconButtonProps, 'icon' | 'activeIcon' | 'variant'>) {
+export function VolumeButton(props: Omit<FullIconButtonProps, 'icon' | 'activeIcon' | 'variant'>) {
   const { isActive, ...rest } = props;
   
   return (

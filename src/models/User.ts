@@ -90,3 +90,4 @@ export async function deleteUser(clerkId: string): Promise<boolean> {
   
   return result.deletedCount === 1;
 } 
+

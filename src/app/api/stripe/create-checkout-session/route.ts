@@ -3,7 +3,7 @@ import { auth } from '@clerk/nextjs';
 import { createCheckoutSession } from '@/lib/stripe/stripe';
 import { getAuthUser } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb/connection';
-import UserModel from '@/models/User';
+import { getUserByClerkId } from '@/models/User';
 
 export async function POST(request: Request) {
   try {
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
     // Conectar a MongoDB y obtener información del usuario
     await connectToDatabase();
-    const user = await UserModel.findOne({ clerkId: userId });
+    const user = await getUserByClerkId(userId);
     const authUser = await getAuthUser(userId);
     
     // Determinar si ya existe un customerId o se necesita el email

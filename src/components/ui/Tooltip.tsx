@@ -25,7 +25,6 @@ export default function Tooltip({
   dark = false,
 }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
-  const [coords, setCoords] = useState({ x: 0, y: 0 });
   const triggerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -67,13 +66,7 @@ export default function Tooltip({
 
   const calculatePosition = () => {
     if (!triggerRef.current) return;
-
-    // Get trigger bounding rect
-    const rect = triggerRef.current.getBoundingClientRect();
-    setCoords({
-      x: rect.left + window.scrollX + rect.width / 2,
-      y: rect.top + window.scrollY + rect.height / 2,
-    });
+    // We don't need to store the position since we're not using it
   };
 
   // Reposition on window resize
@@ -134,12 +127,17 @@ export default function Tooltip({
       }
     }
     
-    // Apply adjusted styles
-    Object.entries(newStyles).forEach(([key, value]) => {
-      if (tooltipRef.current) {
-        tooltipRef.current.style[key as any] = value as string;
-      }
-    });
+    // Apply adjusted styles - use a safer approach to avoid readonly properties
+    if (tooltipRef.current) {
+      const style = tooltipRef.current.style;
+      
+      // Safely set each property if it's a writable CSS property
+      if ('transform' in newStyles) style.transform = newStyles.transform as string;
+      if ('left' in newStyles) style.left = newStyles.left as string;
+      if ('right' in newStyles) style.right = newStyles.right as string;
+      if ('top' in newStyles) style.top = newStyles.top as string;
+      if ('bottom' in newStyles) style.bottom = newStyles.bottom as string;
+    }
   }, [isVisible, position]);
 
   const tooltipClasses = `

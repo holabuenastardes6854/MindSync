@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
+import { motion, useInView, Variants } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 interface FadeInProps {
@@ -58,7 +58,7 @@ export function FadeIn({
   };
   
   // Child item variants for staggered animations
-  const childVariants = staggerChildren > 0 ? {
+  const childVariants: Variants = {
     hidden: { 
       opacity: 0,
       y: direction === 'up' ? 20 : direction === 'down' ? -20 : 0,
@@ -73,7 +73,7 @@ export function FadeIn({
         ease: [0.25, 0.1, 0.25, 1],
       },
     },
-  } : {};
+  };
 
   return (
     <motion.div
@@ -83,11 +83,15 @@ export function FadeIn({
       animate={isInView ? 'visible' : 'hidden'}
       variants={containerVariants}
     >
-      {staggerChildren > 0 && React.Children.map(children, (child, index) => (
-        <motion.div key={index} variants={childVariants}>
-          {child}
-        </motion.div>
-      )) || children}
+      {staggerChildren > 0 ? (
+        React.Children.map(children, (child, index) => (
+          <motion.div key={index} variants={childVariants}>
+            {child}
+          </motion.div>
+        ))
+      ) : (
+        children
+      )}
     </motion.div>
   );
 }

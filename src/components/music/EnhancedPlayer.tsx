@@ -1,14 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Icon } from '@iconify/react';
 import { cn } from '@/lib/utils';
 
 // Import our custom components
 import { IconButton, PlayButton, SkipButton, VolumeButton } from '@/components/ui/IconButton';
 import { SessionTimer } from '@/components/music/SessionTimer';
-import { MusicVisualization, WaveVisualization } from '@/components/music/MusicVisualization';
+import { WaveVisualization } from '@/components/music/MusicVisualization';
 import { FadeIn } from '@/components/ui/FadeIn';
 import { AnimatedText } from '@/components/ui/AnimatedText';
 
@@ -41,7 +40,6 @@ export function EnhancedPlayer({
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(initialVolume);
   const [isMuted, setIsMuted] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
   const [isExpanded, setIsExpanded] = useState(!compact);
   
   // Default cover images for each session type
@@ -177,7 +175,6 @@ export function EnhancedPlayer({
               isActive={isPlaying}
               onClick={handlePlayPause}
               animation="scale"
-              variant="glow"
               size={isExpanded ? "md" : "sm"}
               activeColor={color}
             />

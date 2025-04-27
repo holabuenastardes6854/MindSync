@@ -25,7 +25,6 @@ export function ScrollFadeIn({
   distance = 50,
   once = true,
   threshold = 0.1,
-  as: Component = 'div',
 }: ScrollFadeInProps) {
   const controls = useAnimation();
   const ref = useRef(null);

@@ -3,7 +3,7 @@ import { Webhook } from 'svix';
 import { headers } from 'next/headers';
 import { WebhookEvent } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/mongodb/connection';
-import UserModel from '@/models/User';
+import { createUser, updateUser, deleteUser, User } from '@/models/User';
 
 export async function POST(req: Request) {
   // Obtener el cuerpo de la solicitud y encabezados
@@ -54,34 +54,63 @@ export async function POST(req: Request) {
     // Procesar eventos según su tipo
     if (eventType === 'user.created') {
       const { id, email_addresses, first_name, last_name } = evt.data;
+      const email = email_addresses[0]?.email_address;
       
-      await UserModel.create({
+      if (!email) {
+        return new NextResponse('Error: Usuario sin dirección de correo electrónico', {
+          status: 400
+        });
+      }
+      
+      const nameStr = `${first_name || ''} ${last_name || ''}`.trim();
+      
+      // Crear objeto de usuario con tipado correcto
+      const userData: Omit<User, '_id' | 'createdAt' | 'updatedAt'> = {
         clerkId: id,
-        email: email_addresses[0]?.email_address,
-        name: `${first_name || ''} ${last_name || ''}`.trim() || undefined
-      });
+        email
+      };
+      
+      // Solo agregar el nombre si existe
+      if (nameStr) {
+        userData.name = nameStr;
+      }
+      
+      await createUser(userData);
       
       console.log(`Usuario creado en MongoDB: ${id}`);
     }
     else if (eventType === 'user.updated') {
       const { id, email_addresses, first_name, last_name } = evt.data;
+      const email = email_addresses[0]?.email_address;
       
-      await UserModel.findOneAndUpdate(
-        { clerkId: id },
-        {
-          email: email_addresses[0]?.email_address,
-          name: `${first_name || ''} ${last_name || ''}`.trim() || undefined,
-          updatedAt: new Date()
-        },
-        { upsert: true }
-      );
+      if (!email) {
+        return new NextResponse('Error: Usuario sin dirección de correo electrónico', {
+          status: 400
+        });
+      }
+      
+      const nameStr = `${first_name || ''} ${last_name || ''}`.trim();
+      
+      // Crear objeto de actualización con tipado correcto
+      const updateData: Partial<Omit<User, '_id' | 'clerkId' | 'createdAt'>> = {
+        email
+      };
+      
+      // Solo agregar el nombre si existe
+      if (nameStr) {
+        updateData.name = nameStr;
+      }
+      
+      // id es siempre string aquí, proveniente de Clerk
+      await updateUser(id as string, updateData);
       
       console.log(`Usuario actualizado en MongoDB: ${id}`);
     }
     else if (eventType === 'user.deleted') {
       const { id } = evt.data;
       
-      await UserModel.findOneAndDelete({ clerkId: id });
+      // id es siempre string aquí, proveniente de Clerk
+      await deleteUser(id as string);
       
       console.log(`Usuario eliminado de MongoDB: ${id}`);
     }

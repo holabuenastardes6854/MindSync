@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs';
 import { connectToDatabase } from '@/lib/mongodb/connection';
-import SubscriptionModel from '@/models/Subscription';
+import { getSubscriptionByUserId } from '@/models/Subscription';
 
 export async function GET() {
   try {
@@ -18,7 +18,7 @@ export async function GET() {
     await connectToDatabase();
     
     // Buscar suscripción activa del usuario
-    const subscription = await SubscriptionModel.findOne({ userId });
+    const subscription = await getSubscriptionByUserId(userId);
     
     // Si no existe suscripción, retornar plan gratuito por defecto
     if (!subscription) {
@@ -36,7 +36,7 @@ export async function GET() {
     // Retornar información de la suscripción
     return NextResponse.json({
       subscription: {
-        id: subscription._id.toString(),
+        id: subscription._id?.toString() || 'unknown',
         plan: subscription.plan,
         status: subscription.status,
         currentPeriodEnd: subscription.currentPeriodEnd?.toISOString() || new Date().toISOString(),

@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, useSpring, useTransform, MotionValue } from 'framer-motion';
+import React, { useRef, useEffect } from 'react';
+import { motion, useSpring, useTransform } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 interface ParallaxProps {
@@ -25,8 +25,7 @@ export function Parallax({
   rotateEnabled = true,
   translateEnabled = true,
 }: ParallaxProps) {
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [elementCenter, setElementCenter] = useState({ x: 0, y: 0 });
+  // We don't need elementCenter state since we only need the setter function
   const elementRef = useRef<HTMLDivElement>(null);
 
   // Smoothed values for animation
@@ -75,13 +74,8 @@ export function Parallax({
   useEffect(() => {
     // Get element dimensions on mount and window resize
     const updateElementCenter = () => {
-      if (elementRef.current) {
-        const rect = elementRef.current.getBoundingClientRect();
-        setElementCenter({
-          x: rect.left + rect.width / 2,
-          y: rect.top + rect.height / 2,
-        });
-      }
+      // We don't need to save the center position to state
+      // Just calculate it when needed for the updateSprings function
     };
 
     // Add event listeners
