@@ -3,8 +3,9 @@ import { Webhook } from 'svix';
 import { headers } from 'next/headers';
 import { WebhookEvent } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/mongodb/connection';
-import { createUser, updateUser, deleteUser, User } from '@/models/User';
-import { createDefaultSubscription } from '@/models/Subscription';
+import { createUser, updateUser, deleteUser, getUserByClerkId, User } from '@/models/User';
+import { createDefaultSubscription, getSubscriptionByUserId } from '@/models/Subscription';
+import { archiveDeletedUser, DeletedUser } from '@/models/DeletedUser';
 
 export async function POST(req: Request) {
   const payload = await req.text();
@@ -107,7 +108,7 @@ export async function POST(req: Request) {
       console.log(`Usuario creado en MongoDB: ${id}`);
     }
     else if (eventType === 'user.updated') {
-      const { id, email_addresses, first_name, last_name } = evt.data;
+      const { id, email_addresses, first_name, last_name, image_url } = evt.data;
       const email = email_addresses[0]?.email_address;
       
       if (!email) {
@@ -135,11 +136,46 @@ export async function POST(req: Request) {
     }
     else if (eventType === 'user.deleted') {
       const { id } = evt.data;
+      const clerkId = id as string;
       
-      // id es siempre string aquí, proveniente de Clerk
-      await deleteUser(id as string);
+      // Obtener datos completos del usuario antes de eliminarlo
+      const user = await getUserByClerkId(clerkId);
       
-      console.log(`Usuario eliminado de MongoDB: ${id}`);
+      if (user) {
+        // Obtener datos de suscripción del usuario
+        const subscription = await getSubscriptionByUserId(clerkId);
+        
+        // Preparar datos para archivar
+        const archivedUserData: Omit<DeletedUser, '_id'> = {
+          clerkId: user.clerkId,
+          email: user.email,
+          name: user.name,
+          stripeCustomerId: user.stripeCustomerId,
+          plan: user.plan,
+          deletedAt: new Date(),
+          createdAt: user.createdAt,
+          usageStats: {
+            totalSessionsCompleted: user.stats?.totalSessionsCompleted,
+            totalMinutesListened: user.stats?.totalMinutesListened,
+            categoriesUsage: user.stats?.categoriesUsage
+          },
+          subscriptionInfo: subscription ? {
+            plan: subscription.plan,
+            status: subscription.status,
+            cancelReason: subscription.cancelReason
+          } : undefined,
+          deletionSource: 'user' as const // Definir explícitamente como un literal de tipo 'user'
+        };
+        
+        // Guardar en la colección de usuarios eliminados
+        await archiveDeletedUser(archivedUserData);
+        console.log(`Datos del usuario archivados antes de eliminar: ${clerkId}`);
+      }
+      
+      // Eliminar el usuario de la colección principal
+      await deleteUser(clerkId);
+      
+      console.log(`Usuario eliminado de MongoDB: ${clerkId}`);
     }
 
     return NextResponse.json({ success: true });

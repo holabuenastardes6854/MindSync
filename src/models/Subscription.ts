@@ -159,25 +159,34 @@ export async function addPaymentRecord(
   }
 ): Promise<Subscription | null> {
   const db = await getDatabase();
+  const now = new Date();
   
+  // Solo actualizar latestPurchaseDate si el pago fue exitoso
+  const updateFields: Record<string, any> = {
+    $push: { 
+      paymentHistory: payment 
+    },
+    $set: {
+      updatedAt: now
+    }
+  };
+  
+  // Si el pago fue exitoso, actualizar la fecha de última compra
+  if (payment.status === 'succeeded') {
+    updateFields.$set.latestPurchaseDate = payment.date;
+  }
+  
+  // Primero, verificar si es la primera compra
+  const subscription = await getSubscriptionByUserId(userId);
+  if (!subscription?.firstPurchaseDate && payment.status === 'succeeded') {
+    // Si no hay fecha de primera compra y el pago fue exitoso, establecer como la primera
+    updateFields.$set.firstPurchaseDate = payment.date;
+  }
+  
+  // Actualizar la suscripción
   const result = await db.collection<Subscription>(COLLECTION).findOneAndUpdate(
     { userId },
-    { 
-      $push: { 
-        paymentHistory: payment 
-      },
-      $set: {
-        latestPurchaseDate: payment.status === 'succeeded' ? payment.date : undefined,
-        firstPurchaseDate: {
-          $cond: [
-            { $eq: ["$firstPurchaseDate", null] },
-            payment.status === 'succeeded' ? payment.date : undefined,
-            "$firstPurchaseDate"
-          ]
-        },
-        updatedAt: new Date()
-      } 
-    },
+    updateFields,
     { returnDocument: 'after' }
   );
   
