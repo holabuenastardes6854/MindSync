@@ -4,11 +4,10 @@ import { headers } from 'next/headers';
 import { WebhookEvent } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/mongodb/connection';
 import { createUser, updateUser, deleteUser, User } from '@/models/User';
-import { createDefaultSubscription } from '@/models/Subscription';
 
 export async function POST(req: Request) {
+  // Obtener el cuerpo de la solicitud y encabezados
   const payload = await req.text();
-  console.log('payload', payload);
   const headerPayload = headers();
   const svixId = headerPayload.get('svix-id');
   const svixTimestamp = headerPayload.get('svix-timestamp');
@@ -54,7 +53,7 @@ export async function POST(req: Request) {
 
     // Procesar eventos según su tipo
     if (eventType === 'user.created') {
-      const { id, email_addresses, first_name, last_name, image_url } = evt.data;
+      const { id, email_addresses, first_name, last_name } = evt.data;
       const email = email_addresses[0]?.email_address;
       
       if (!email) {
@@ -68,26 +67,7 @@ export async function POST(req: Request) {
       // Crear objeto de usuario con tipado correcto
       const userData: Omit<User, '_id' | 'createdAt' | 'updatedAt'> = {
         clerkId: id,
-        email,
-        plan: 'free',
-        stats: {
-          totalSessionsCompleted: 0,
-          totalMinutesListened: 0,
-          streakDays: 0,
-          categoriesUsage: {
-            focus: 0,
-            relax: 0,
-            sleep: 0
-          }
-        },
-        preferences: {
-          favoriteCategory: undefined,
-          preferredDuration: 30,
-          volume: 80,
-          interfaceTheme: 'dark',
-          notificationsEnabled: true,
-          weeklyReportEnabled: true
-        }
+        email
       };
       
       // Solo agregar el nombre si existe
@@ -95,14 +75,7 @@ export async function POST(req: Request) {
         userData.name = nameStr;
       }
       
-      // Crear el usuario en MongoDB
-      const newUser = await createUser(userData);
-      
-      // Crear una suscripción gratuita por defecto
-      if (newUser && newUser._id) {
-        await createDefaultSubscription(id);
-        console.log(`Suscripción gratuita creada para el usuario: ${id}`);
-      }
+      await createUser(userData);
       
       console.log(`Usuario creado en MongoDB: ${id}`);
     }

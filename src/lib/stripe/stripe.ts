@@ -71,11 +71,11 @@ async function createCheckoutSession({
     }
 
     console.log('Creando sesión de checkout con parámetros:', JSON.stringify(params, null, 2));
-    
+
     try {
       const session = await stripe.checkout.sessions.create(params);
       console.log('Sesión de checkout creada:', session.id);
-      
+
       return {
         url: session.url,
         sessionId: session.id,
@@ -92,14 +92,14 @@ async function createCheckoutSession({
           console.error('Error: Cuenta de Stripe suspendida:', error.message);
           throw new Error(`Cuenta de Stripe suspendida: ${error.message}`);
         }
-        
+
         // Verificar si es un error de "price not found"
         if (error.message.includes('No such price')) {
           console.error(`Error: El ID de precio '${priceId}' no existe en Stripe:`, error.message);
           throw new Error(`El ID de precio '${priceId}' no existe en Stripe. Verifica que estés usando un ID de precio válido.`);
         }
       }
-      
+
       // Otros errores
       console.error('Error al crear sesión de checkout en Stripe:', error);
       throw error;

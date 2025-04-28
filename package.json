@@ -9,8 +9,11 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@agentdeskai/browser-tools-mcp": "^1.2.0",
     "@clerk/nextjs": "^4.31.8",
     "@iconify/react": "^4.1.1",
+    "@modelcontextprotocol/server-filesystem": "^2025.3.28",
+    "@stripe/agent-toolkit": "^0.6.1",
     "clerk": "^0.8.3",
     "clsx": "^2.0.0",
     "framer-motion": "^12.9.2",

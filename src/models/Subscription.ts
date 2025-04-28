@@ -5,8 +5,9 @@ import { getDatabase } from '@/lib/mongodb/connection';
 const COLLECTION = 'subscriptions';
 
 // Types
-export type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'trialing' | 'incomplete';
+export type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'trialing' | 'incomplete' | 'unpaid';
 export type SubscriptionPlan = 'free' | 'premium' | 'pro';
+export type PaymentMethod = 'card' | 'crypto' | 'bank_transfer' | 'other';
 
 // Interface for Subscription document
 export interface Subscription {
@@ -20,6 +21,22 @@ export interface Subscription {
   currentPeriodStart?: Date;
   currentPeriodEnd?: Date;
   cancelAtPeriodEnd: boolean;
+  trialStart?: Date;
+  trialEnd?: Date;
+  paymentMethod?: PaymentMethod;
+  firstPurchaseDate?: Date;  // Fecha de la primera compra de un plan de pago
+  latestPurchaseDate?: Date; // Fecha de la última compra/renovación
+  paymentHistory?: {
+    paymentId: string;
+    amount: number;
+    currency: string;
+    date: Date;
+    status: 'succeeded' | 'failed' | 'pending' | 'refunded';
+  }[];
+  discountCode?: string;
+  discountPercentage?: number;
+  discountValidUntil?: Date;
+  cancelReason?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -129,12 +146,111 @@ export async function upsertSubscription(
 }
 
 /**
+ * Adds a payment record to the subscription's payment history
+ */
+export async function addPaymentRecord(
+  userId: string,
+  payment: {
+    paymentId: string;
+    amount: number;
+    currency: string;
+    date: Date;
+    status: 'succeeded' | 'failed' | 'pending' | 'refunded';
+  }
+): Promise<Subscription | null> {
+  const db = await getDatabase();
+  
+  const result = await db.collection<Subscription>(COLLECTION).findOneAndUpdate(
+    { userId },
+    { 
+      $push: { 
+        paymentHistory: payment 
+      },
+      $set: {
+        latestPurchaseDate: payment.status === 'succeeded' ? payment.date : undefined,
+        firstPurchaseDate: {
+          $cond: [
+            { $eq: ["$firstPurchaseDate", null] },
+            payment.status === 'succeeded' ? payment.date : undefined,
+            "$firstPurchaseDate"
+          ]
+        },
+        updatedAt: new Date()
+      } 
+    },
+    { returnDocument: 'after' }
+  );
+  
+  return result;
+}
+
+/**
  * Cancels a subscription
  */
-export async function cancelSubscription(userId: string): Promise<Subscription | null> {
+export async function cancelSubscription(
+  userId: string, 
+  reason?: string
+): Promise<Subscription | null> {
   return updateSubscription(userId, {
     status: 'canceled',
     plan: 'free',
-    cancelAtPeriodEnd: true
+    cancelAtPeriodEnd: true,
+    cancelReason: reason
   });
+}
+
+/**
+ * Gets subscription stats for the platform
+ */
+export async function getSubscriptionStats(): Promise<{
+  totalSubscriptions: number;
+  activeSubscriptions: number;
+  planCounts: Record<SubscriptionPlan, number>;
+  revenue: {
+    lastMonth: number;
+    lastYear: number;
+  }
+}> {
+  const db = await getDatabase();
+  const collection = db.collection<Subscription>(COLLECTION);
+  
+  // Count total subscriptions
+  const totalSubscriptions = await collection.countDocuments();
+  
+  // Count active subscriptions
+  const activeSubscriptions = await collection.countDocuments({
+    status: 'active'
+  });
+  
+  // Count subscriptions by plan
+  const planAggregate = await collection.aggregate([
+    {
+      $group: {
+        _id: '$plan',
+        count: { $sum: 1 }
+      }
+    }
+  ]).toArray();
+  
+  const planCounts = {
+    free: 0,
+    premium: 0,
+    pro: 0
+  };
+  
+  planAggregate.forEach(item => {
+    planCounts[item._id as SubscriptionPlan] = item.count;
+  });
+  
+  // Calculate revenue estimates (in a real app, you'd use the payment history)
+  // This is just a placeholder implementation
+  return {
+    totalSubscriptions,
+    activeSubscriptions,
+    planCounts,
+    revenue: {
+      lastMonth: 0, // Calcular en base al historial real
+      lastYear: 0   // Calcular en base al historial real
+    }
+  };
 } 

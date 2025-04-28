@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { useAuth, useUser } from '@clerk/nextjs';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
 import SessionTypeSelector from '@/components/music/SessionTypeSelector';
-import DurationPicker from '@/components/music/DurationPicker';
+import DurationSelector from '@/components/music/DurationSelector';
 import MusicCategoryGrid from '@/components/music/MusicCategoryGrid';
-import MusicPlayer from '@/components/player/MusicPlayer';
-import SessionFeedback from '@/components/feedback/SessionFeedback';
+import { FadeIn, FadeInUp } from '@/components/ui/FadeIn';
+import { StrongParallax } from '@/components/ui/Parallax';
 import { Icon } from '@iconify/react';
 
 // Types
@@ -25,120 +26,105 @@ interface MusicCategory {
 }
 
 export default function DashboardPage() {
-  // State management
+  // User and subscription state
+  const { isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
+  const [isPremium, setIsPremium] = useState<boolean>(false);
+  
+  // Session configuration state
   const [sessionType, setSessionType] = useState<SessionType>('focus');
   const [duration, setDuration] = useState<DurationOption>(30);
-  const [selectedCategory, setSelectedCategory] = useState<MusicCategory | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [sessionCompleted, setSessionCompleted] = useState(false);
-  const [showFeedback, setShowFeedback] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Simulate loading state
+  // Simulate data loading and check premium status
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
-    
-    return () => clearTimeout(timer);
-  }, []);
+    if (isLoaded) {
+      // Simulate API call to fetch subscription status
+      const checkPremiumStatus = async () => {
+        try {
+          // This would be a real API call in production
+          await new Promise(resolve => setTimeout(resolve, 800));
+          
+          // For demo, randomly assign premium status
+          setIsPremium(Math.random() > 0.5);
+          setIsLoading(false);
+        } catch (error) {
+          console.error('Error checking premium status:', error);
+          setIsLoading(false);
+        }
+      };
+      
+      checkPremiumStatus();
+    }
+  }, [isLoaded]);
   
-  // Handlers
-  const handleCategorySelect = (category: MusicCategory) => {
-    setSelectedCategory(category);
-    // Simulate loading the music
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setIsPlaying(true);
-    }, 1000);
+  // Handler for starting a session
+  const handleStartSession = (category: MusicCategory) => {
+    // In a real app, this would navigate to the player or prepare the session
+    window.location.href = `/player?type=${sessionType}&duration=${duration}&category=${category.id}`;
   };
   
-  const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
-  };
-  
-  const handleSkip = () => {
-    // Simulate loading the next track
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setIsPlaying(true);
-    }, 800);
-  };
-  
-  const handleVolumeChange = (volume: number) => {
-    // In a real app, this would change the volume
-    console.log('Volume changed to:', volume);
-  };
-  
-  const handleSessionEnd = () => {
-    setIsPlaying(false);
-    setSessionCompleted(true);
-    setShowFeedback(true);
-  };
-  
-  const handleFeedbackSubmit = (rating: number, comment: string) => {
-    // In a real app, this would send feedback to the server
-    console.log('Feedback submitted:', { rating, comment });
-    setShowFeedback(false);
-    setSessionCompleted(false);
-    setSelectedCategory(null);
-  };
-  
-  const handleFeedbackSkip = () => {
-    setShowFeedback(false);
-    setSessionCompleted(false);
-    setSelectedCategory(null);
-  };
-  
-  // Framer Motion variants
-  const pageVariants = {
-    initial: { opacity: 0 },
-    animate: { 
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { 
       opacity: 1,
+      transition: { 
+        staggerChildren: 0.1,
+        duration: 0.5
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
       transition: { duration: 0.5 }
-    },
-    exit: { opacity: 0 }
+    }
   };
   
   return (
-    <motion.div 
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      variants={pageVariants}
-      className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950"
-    >
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950">
       <Navbar />
       <Sidebar />
       
-      <main className="pt-20 md:pl-64 p-4 md:p-10">
-        <div className="max-w-5xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="flex items-center justify-between mb-10"
-          >
-            <div className="flex items-center">
-              <Icon icon="fluent-emoji-high-contrast:musical-notes" className="w-10 h-10 text-purple-500 mr-3" />
-              <h1 className="text-3xl font-bold text-white">
-                Your Brain <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">Sessions</span>
-              </h1>
+      <main className="pt-24 md:pl-64 p-4 md:p-8">
+        <div className="max-w-6xl mx-auto">
+          {/* Hero Section */}
+          <FadeInUp className="mb-16">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
+              <div>
+                <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+                  Welcome {user?.firstName ? `, ${user.firstName}` : ''}
+                </h1>
+                <p className="text-gray-400 max-w-xl">
+                  Choose a music style that matches your current needs and enhance your mental state.
+                </p>
+              </div>
+              
+              <StrongParallax className="mt-4 md:mt-0">
+                <div className="bg-gradient-to-br from-purple-500/20 to-blue-500/20 p-3 rounded-lg backdrop-blur-sm border border-purple-500/30">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-purple-500/20 rounded-md">
+                      <Icon icon={isPremium ? "ph:crown-fill" : "ph:star"} className={isPremium ? "text-yellow-400" : "text-gray-400"} width={24} />
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">
+                        {isPremium ? 'Premium Account' : 'Free Account'}
+                      </p>
+                      <p className="text-gray-400 text-sm">
+                        {isPremium 
+                          ? 'All features unlocked' 
+                          : <Link href="/pricing" className="text-purple-400 hover:text-purple-300">Upgrade for more options</Link>}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </StrongParallax>
             </div>
-            
-            <Link href="/player">
-              <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-lg text-white"
-              >
-                <Icon icon="lucide:music" width={18} />
-                <span>Advanced Player</span>
-              </motion.button>
-            </Link>
-          </motion.div>
+          </FadeInUp>
           
           <AnimatePresence mode="wait">
             {isLoading ? (
@@ -155,95 +141,116 @@ export default function DashboardPage() {
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                 />
-                <p className="mt-6 text-gray-400 text-lg">Preparing your session...</p>
+                <p className="mt-6 text-gray-400 text-lg">Loading your personalized experience...</p>
               </motion.div>
             ) : (
-              <>
-                {/* Session configuration section */}
-                {!selectedCategory && !sessionCompleted && (
-                  <motion.div
-                    key="selector"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.5 }}
-                  >
-                    <SessionTypeSelector 
-                      selected={sessionType} 
-                      onSelect={setSessionType} 
-                    />
-                    
-                    <DurationPicker 
-                      selected={duration} 
-                      onSelect={setDuration}
-                    />
-                    
-                    <MusicCategoryGrid 
-                      sessionType={sessionType} 
-                      onSelect={handleCategorySelect}
-                    />
-                  </motion.div>
-                )}
+              <motion.div
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                {/* Session Type Selector */}
+                <motion.div variants={itemVariants} className="mb-10">
+                  <h2 className="text-xl font-semibold text-white mb-4">What do you want to achieve?</h2>
+                  <SessionTypeSelector 
+                    selected={sessionType} 
+                    onSelect={setSessionType} 
+                  />
+                </motion.div>
                 
-                {/* Music player section */}
-                {selectedCategory && !showFeedback && (
-                  <motion.div
-                    key="player"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ duration: 0.5 }}
-                  >
-                    <MusicPlayer
-                      trackTitle={selectedCategory.title}
-                      category={sessionType.charAt(0).toUpperCase() + sessionType.slice(1)}
-                      duration={duration}
-                      isPlaying={isPlaying}
-                      onPlayPause={handlePlayPause}
-                      onSkip={handleSkip}
-                      onVolumeChange={handleVolumeChange}
-                      onSessionEnd={handleSessionEnd}
-                    />
+                {/* Duration Selector */}
+                <motion.div variants={itemVariants} className="mb-10">
+                  <DurationSelector 
+                    selectedDuration={duration} 
+                    onSelectDuration={(value) => setDuration(value as DurationOption)}
+                    isPremium={isPremium}
+                  />
+                </motion.div>
+                
+                {/* Music Categories */}
+                <motion.div variants={itemVariants}>
+                  <MusicCategoryGrid 
+                    sessionType={sessionType} 
+                    onSelect={handleStartSession}
+                  />
+                </motion.div>
+                
+                {/* Quick Start - Recently Played */}
+                <motion.div 
+                  variants={itemVariants}
+                  className="mt-16 mb-8"
+                >
+                  <h2 className="text-xl font-semibold text-white mb-4">Recently Played</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <motion.div 
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 cursor-pointer hover:bg-gray-800 transition-all duration-300"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="bg-blue-500/20 p-2 rounded-md">
+                          <Icon icon="lucide:brain" className="text-blue-400" width={24} />
+                        </div>
+                        <div>
+                          <h3 className="text-white font-medium">Deep Focus</h3>
+                          <p className="text-gray-400 text-sm">30 min · Played yesterday</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex justify-end">
+                        <div className="bg-purple-600 rounded-full p-2 hover:bg-purple-500 transition-colors">
+                          <Icon icon="lucide:play" className="text-white" width={14} />
+                        </div>
+                      </div>
+                    </motion.div>
                     
                     <motion.div 
-                      className="mt-8 bg-gray-800/30 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50 shadow-lg"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3, duration: 0.5 }}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 cursor-pointer hover:bg-gray-800 transition-all duration-300"
                     >
-                      <h3 className="text-lg font-medium text-white mb-3 flex items-center">
-                        <Icon icon="lucide:brain" className="mr-2 text-purple-400" />
-                        Session Benefits
-                      </h3>
-                      <p className="text-gray-300">
-                        {sessionType === 'focus' && 'This focus music is specially designed to enhance your concentration and productivity. The neural phase locking technology helps maintain attention for longer periods.'}
-                        {sessionType === 'relax' && 'This relaxation session uses scientifically-designed soundscapes to reduce stress and anxiety. Regular sessions can help lower cortisol levels.'}
-                        {sessionType === 'sleep' && 'This sleep music features frequency patterns that guide your brain toward deeper sleep states. The neural oscillations promote faster sleep onset.'}
-                      </p>
+                      <div className="flex items-center space-x-3">
+                        <div className="bg-green-500/20 p-2 rounded-md">
+                          <Icon icon="lucide:sparkles" className="text-green-400" width={24} />
+                        </div>
+                        <div>
+                          <h3 className="text-white font-medium">Evening Relaxation</h3>
+                          <p className="text-gray-400 text-sm">60 min · Played 2 days ago</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex justify-end">
+                        <div className="bg-purple-600 rounded-full p-2 hover:bg-purple-500 transition-colors">
+                          <Icon icon="lucide:play" className="text-white" width={14} />
+                        </div>
+                      </div>
                     </motion.div>
-                  </motion.div>
-                )}
-                
-                {/* Feedback section */}
-                {showFeedback && (
-                  <motion.div
-                    key="feedback"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 20 }}
-                    transition={{ duration: 0.5 }}
-                  >
-                    <SessionFeedback 
-                      onSubmit={handleFeedbackSubmit}
-                      onSkip={handleFeedbackSkip}
-                    />
-                  </motion.div>
-                )}
-              </>
+                    
+                    <motion.div 
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 cursor-pointer hover:bg-gray-800 transition-all duration-300"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="bg-indigo-500/20 p-2 rounded-md">
+                          <Icon icon="lucide:moon" className="text-indigo-400" width={24} />
+                        </div>
+                        <div>
+                          <h3 className="text-white font-medium">Deep Sleep</h3>
+                          <p className="text-gray-400 text-sm">8 hours · Played 3 days ago</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex justify-end">
+                        <div className="bg-purple-600 rounded-full p-2 hover:bg-purple-500 transition-colors">
+                          <Icon icon="lucide:play" className="text-white" width={14} />
+                        </div>
+                      </div>
+                    </motion.div>
+                  </div>
+                </motion.div>
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
       </main>
-    </motion.div>
+    </div>
   );
 } 
