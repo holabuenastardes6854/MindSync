@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { stripe } from '@/lib/stripe/stripe';
 import { connectToDatabase } from '@/lib/mongodb/connection';
-import SubscriptionModel from '@/models/Subscription';
-import UserModel from '@/models/User';
+import { Subscription } from '@/models/Subscription';
+import { User } from '@/models/User';
 
 // Maneja todas las solicitudes POST a /api/webhooks/stripe
 export async function POST(req: Request) {

@@ -149,14 +149,6 @@ export default function DashboardPage() {
                 initial="hidden"
                 animate="visible"
               >
-                {/* Session Type Selector */}
-                <motion.div variants={itemVariants} className="mb-10">
-                  <h2 className="text-xl font-semibold text-white mb-4">What do you want to achieve?</h2>
-                  <SessionTypeSelector 
-                    selected={sessionType} 
-                    onSelect={setSessionType} 
-                  />
-                </motion.div>
                 
                 {/* Duration Selector */}
                 <motion.div variants={itemVariants} className="mb-10">

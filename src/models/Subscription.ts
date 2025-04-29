@@ -13,6 +13,7 @@ export type PaymentMethod = 'card' | 'crypto' | 'bank_transfer' | 'other';
 export interface Subscription {
   _id?: ObjectId;
   userId: string;
+  userEmail?: string;
   stripeCustomerId?: string;
   stripePriceId?: string;
   stripeSubscriptionId?: string;
@@ -131,6 +132,7 @@ export async function upsertSubscription(
       $setOnInsert: {
         userId,
         createdAt: now,
+        userEmail: data.userEmail,
         status: data.status || 'active',
         plan: data.plan || 'free',
         cancelAtPeriodEnd: data.cancelAtPeriodEnd || false
@@ -262,4 +264,15 @@ export async function getSubscriptionStats(): Promise<{
       lastYear: 0   // Calcular en base al historial real
     }
   };
+}
+
+/**
+ * Deletes a subscription by user ID
+ */
+export async function deleteSubscription(userId: string): Promise<boolean> {
+  const db = await getDatabase();
+  
+  const result = await db.collection(COLLECTION).deleteOne({ userId });
+  
+  return result.deletedCount === 1;
 } 

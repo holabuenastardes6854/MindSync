@@ -8,9 +8,10 @@ import { useAuth } from '@clerk/nextjs';
 const durationOptions = [
   { value: 15, label: '15 min', requiresPremium: false },
   { value: 30, label: '30 min', requiresPremium: false },
-  { value: 60, label: '1 hora', requiresPremium: true },
+  { value: 60, label: '1 hora', requiresPremium: false },
   { value: 120, label: '2 horas', requiresPremium: true },
   { value: 240, label: '4 horas', requiresPremium: true },
+  { value: Infinity, label: '∞ Infinito', requiresPremium: true },
 ];
 
 interface DurationSelectorProps {
@@ -42,7 +43,7 @@ export default function DurationSelector({
       <div className="flex flex-wrap gap-3">
         {durationOptions.map(({ value, label, requiresPremium: required }) => (
           <DurationButton
-            key={value}
+            key={value === Infinity ? 'infinity' : value}
             duration={value}
             label={label}
             isSelected={selectedDuration === value}

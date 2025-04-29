@@ -4,7 +4,7 @@ import { headers } from 'next/headers';
 import { WebhookEvent } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/mongodb/connection';
 import { createUser, updateUser, deleteUser, getUserByClerkId, User } from '@/models/User';
-import { createDefaultSubscription, getSubscriptionByUserId } from '@/models/Subscription';
+import { createDefaultSubscription, getSubscriptionByUserId, deleteSubscription } from '@/models/Subscription';
 import { archiveDeletedUser, DeletedUser } from '@/models/DeletedUser';
 
 export async function POST(req: Request) {
@@ -108,7 +108,7 @@ export async function POST(req: Request) {
       console.log(`Usuario creado en MongoDB: ${id}`);
     }
     else if (eventType === 'user.updated') {
-      const { id, email_addresses, first_name, last_name, image_url } = evt.data;
+      const { id, email_addresses, first_name, last_name } = evt.data;
       const email = email_addresses[0]?.email_address;
       
       if (!email) {
@@ -175,7 +175,10 @@ export async function POST(req: Request) {
       // Eliminar el usuario de la colección principal
       await deleteUser(clerkId);
       
-      console.log(`Usuario eliminado de MongoDB: ${clerkId}`);
+      // Eliminar la suscripción del usuario
+      await deleteSubscription(clerkId);
+      
+      console.log(`Usuario y suscripción eliminados de MongoDB: ${clerkId}`);
     }
 
     return NextResponse.json({ success: true });
